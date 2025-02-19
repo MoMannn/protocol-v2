@@ -264,6 +264,45 @@ abstract contract BaseUniswapAdapter is FlashLoanReceiverBase, IBaseUniswapAdapt
     return LENDING_POOL.getReserveData(asset);
   }
 
+  function _activatePermit(
+    address reserveAToken,
+    address user,
+    PermitSignature memory permitSignature
+  ) internal {
+
+    if (_usePermit(permitSignature)) {
+      IERC20WithPermit(reserveAToken).permit(
+        user,
+        address(this),
+        permitSignature.amount,
+        permitSignature.deadline,
+        permitSignature.v,
+        permitSignature.r,
+        permitSignature.s
+      );
+    }
+  }
+
+    /**
+   * @dev Pull the ATokens from the user
+   * @param reserve address of the asset
+   * @param reserveAToken address of the aToken of the reserve
+   * @param user address
+   * @param amount of tokens to be transferred to the contract
+   */
+  function _pullATokenAlreadyPermitted(
+    address reserve,
+    address reserveAToken,
+    address user,
+    uint256 amount
+  ) internal {
+    // transfer from user to adapter
+    IERC20(reserveAToken).safeTransferFrom(user, address(this), amount);
+
+    // withdraw reserve
+    LENDING_POOL.withdraw(reserve, amount, address(this));
+  }
+
   /**
    * @dev Pull the ATokens from the user
    * @param reserve address of the asset

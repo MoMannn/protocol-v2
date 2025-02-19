@@ -10,7 +10,6 @@ import {Errors} from '../libraries/helpers/Errors.sol';
 import {VersionedInitializable} from '../libraries/aave-upgradeability/VersionedInitializable.sol';
 import {IncentivizedERC20} from './IncentivizedERC20.sol';
 import {IAaveIncentivesController} from '../../interfaces/IAaveIncentivesController.sol';
-
 /**
  * @title Aave ERC20 AToken
  * @dev Implementation of the interest bearing token for the Aave protocol
@@ -49,6 +48,24 @@ contract AToken is
 
   function getRevision() internal pure virtual override returns (uint256) {
     return ATOKEN_REVISION;
+  }
+
+   /* Privacy features */
+
+  function setPrivacyEnabled(bool _privacyEnabled) external override onlyLendingPool() {
+      privacyEnabled = _privacyEnabled;
+  }
+
+  function setPrivacyWhitelistAddreses(address[] calldata _addresses) external override onlyLendingPool() {
+      for (uint256 i = 0; i < _addresses.length; i++) {
+          privacyReadEnabledAddresses[_addresses[i]] = true;
+      }   
+  }
+
+  function removePrivacyWhitelistAddreses(address[] calldata _addresses) external override onlyLendingPool() {
+      for (uint256 i = 0; i < _addresses.length; i++) {
+          privacyReadEnabledAddresses[_addresses[i]] = false;
+      }   
   }
 
   /**
@@ -96,6 +113,11 @@ contract AToken is
     _treasury = treasury;
     _underlyingAsset = underlyingAsset;
     _incentivesController = incentivesController;
+    // privacy features
+    privacyEnabled = true;
+    // whitelist pool and self
+    privacyReadEnabledAddresses[address(_pool)] = true;
+    privacyReadEnabledAddresses[address(this)] = true;
 
     emit Initialized(
       underlyingAsset,
@@ -129,8 +151,9 @@ contract AToken is
 
     IERC20(_underlyingAsset).safeTransfer(receiverOfUnderlying, amount);
 
-    emit Transfer(user, address(0), amount);
-    emit Burn(user, receiverOfUnderlying, amount, index);
+    // Private features
+    emit Transfer(address(0), address(0), amount);
+    emit Burn(address(0), address(0), amount, index);
   }
 
   /**
@@ -152,8 +175,9 @@ contract AToken is
     require(amountScaled != 0, Errors.CT_INVALID_MINT_AMOUNT);
     _mint(user, amountScaled);
 
-    emit Transfer(address(0), user, amount);
-    emit Mint(user, amount, index);
+    // Private features
+    emit Transfer(address(0), address(0), amount);
+    emit Mint(address(0), amount, index);
 
     return previousBalance == 0;
   }
@@ -197,7 +221,8 @@ contract AToken is
     // so no need to emit a specific event here
     _transfer(from, to, value, false);
 
-    emit Transfer(from, to, value);
+    // Private features
+    emit Transfer(address(0), address(0), value);
   }
 
   /**
@@ -211,6 +236,10 @@ contract AToken is
     override(IncentivizedERC20, IERC20)
     returns (uint256)
   {
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
+    
     return super.balanceOf(user).rayMul(_pool.getReserveNormalizedIncome(_underlyingAsset));
   }
 
@@ -220,7 +249,12 @@ contract AToken is
    * @param user The user whose balance is calculated
    * @return The scaled balance of the user
    **/
-  function scaledBalanceOf(address user) external view override returns (uint256) {
+  function scaledBalanceOf(address user) external view override 
+    returns (uint256)
+  {
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
     return super.balanceOf(user);
   }
 
@@ -236,6 +270,9 @@ contract AToken is
     override
     returns (uint256, uint256)
   {
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
     return (super.balanceOf(user), super.totalSupply());
   }
 
@@ -387,7 +424,9 @@ contract AToken is
       pool.finalizeTransfer(underlyingAsset, from, to, amount, fromBalanceBefore, toBalanceBefore);
     }
 
-    emit BalanceTransfer(from, to, amount, index);
+
+    //Private features
+    emit BalanceTransfer(address(0), address(0), amount, index);
   }
 
   /**

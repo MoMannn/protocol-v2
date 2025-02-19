@@ -104,4 +104,9 @@ interface IAToken is IERC20, IScaledBalanceToken, IInitializableAToken {
    * @dev Returns the address of the underlying asset of this aToken (E.g. WETH for aWETH)
    **/
   function UNDERLYING_ASSET_ADDRESS() external view returns (address);
+
+  //Privacy features
+  function setPrivacyEnabled(bool _privacyEnabled) external;
+  function setPrivacyWhitelistAddreses(address[] calldata _addresses) external;
+  function removePrivacyWhitelistAddreses(address[] calldata _addresses) external;
 }

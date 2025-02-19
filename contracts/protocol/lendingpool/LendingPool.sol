@@ -25,6 +25,7 @@ import {ReserveConfiguration} from '../libraries/configuration/ReserveConfigurat
 import {UserConfiguration} from '../libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
+import {PrivacyFeatures} from '../privacy/PrivacyFeatures.sol';
 
 /**
  * @title LendingPool contract
@@ -43,7 +44,7 @@ import {LendingPoolStorage} from './LendingPoolStorage.sol';
  *   LendingPoolAddressesProvider
  * @author Aave
  **/
-contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage {
+contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage, PrivacyFeatures {
   using SafeMath for uint256;
   using WadRayMath for uint256;
   using PercentageMath for uint256;
@@ -76,6 +77,31 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     return LENDINGPOOL_REVISION;
   }
 
+  /* Privacy features */
+
+  function setPrivacyEnabled(bool _privacyEnabled)  external override onlyLendingPoolConfigurator {
+      privacyEnabled = _privacyEnabled;
+  }
+
+  function whitelistAddresses(address[] calldata _addresses, bool _isWhitelisted) external override onlyLendingPoolConfigurator {
+      for (uint256 i = 0; i < _addresses.length; i++) {
+          privacyReadEnabledAddresses[_addresses[i]] = _isWhitelisted;
+      }
+  }
+
+  function setPrivacyEnabledToken(address aToken, bool _privacyEnabled)  external override onlyLendingPoolConfigurator {
+      IAToken(aToken).setPrivacyEnabled(_privacyEnabled);
+  }
+
+  function setPrivacyTokenWhitelist(address token, address[] calldata _whitelist) external override onlyLendingPoolConfigurator {
+      IAToken(token).setPrivacyWhitelistAddreses(_whitelist);
+  }
+
+  function removePrivacyTokenWhitelist(address token, address[] calldata _whitelist) external override onlyLendingPoolConfigurator {
+      IAToken(token).removePrivacyWhitelistAddreses(_whitelist);
+  }
+
+
   /**
    * @dev Function is invoked by the proxy contract when the LendingPool contract is added to the
    * LendingPoolAddressesProvider of the market.
@@ -88,6 +114,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     _maxStableRateBorrowSizePercent = 2500;
     _flashLoanPremiumTotal = 9;
     _maxNumberOfReserves = 128;
+    privacyEnabled = true;
   }
 
   /**
@@ -125,7 +152,13 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       emit ReserveUsedAsCollateralEnabled(asset, onBehalfOf);
     }
 
-    emit Deposit(asset, msg.sender, onBehalfOf, amount, referralCode);
+     //Privacy feature --- limit the emit data
+    if (privacyEnabled) {
+      emit DepositPrivate(block.timestamp, referralCode);
+    } else {
+      emit Deposit(asset, msg.sender, onBehalfOf, amount, referralCode);
+    }
+
   }
 
   /**
@@ -178,7 +211,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
 
-    emit Withdraw(asset, msg.sender, to, amountToWithdraw);
+    //Privacy feature --- limit the emit data
+    if (privacyEnabled) {
+      emit WithdrawPrivate(block.timestamp);
+    } else {
+      emit Withdraw(asset, msg.sender, to, amountToWithdraw);
+    }
 
     return amountToWithdraw;
   }
@@ -284,7 +322,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     IAToken(aToken).handleRepayment(msg.sender, paybackAmount);
 
-    emit Repay(asset, onBehalfOf, msg.sender, paybackAmount);
+    //Privacy feature --- limit the emit data
+    if (privacyEnabled) {
+      emit WithdrawPrivate(block.timestamp);
+    } else {
+      emit Repay(asset, onBehalfOf, msg.sender, paybackAmount);
+    }
 
     return paybackAmount;
   }
@@ -335,7 +378,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     reserve.updateInterestRates(asset, reserve.aTokenAddress, 0, 0);
 
-    emit Swap(asset, msg.sender, rateMode);
+    // Privacy feature 
+    emit Swap(asset, privacyEnabled ? address(0) :  msg.sender, rateMode);
   }
 
   /**
@@ -376,7 +420,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     reserve.updateInterestRates(asset, aTokenAddress, 0, 0);
 
-    emit RebalanceStableBorrowRate(asset, user);
+    // Privacy feature 
+    emit RebalanceStableBorrowRate(asset, privacyEnabled ? address(0) : user);
   }
 
   /**
@@ -405,9 +450,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     _usersConfig[msg.sender].setUsingAsCollateral(reserve.id, useAsCollateral);
 
     if (useAsCollateral) {
-      emit ReserveUsedAsCollateralEnabled(asset, msg.sender);
+      emit ReserveUsedAsCollateralEnabled(asset, privacyEnabled ? address(0) :  msg.sender);
     } else {
-      emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
+      emit ReserveUsedAsCollateralDisabled(asset, privacyEnabled ? address(0) :  msg.sender);
     }
   }
 
@@ -552,14 +597,23 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
           )
         );
       }
-      emit FlashLoan(
-        receiverAddress,
-        msg.sender,
-        vars.currentAsset,
-        vars.currentAmount,
-        vars.currentPremium,
-        referralCode
-      );
+
+      if (privacyEnabled) {
+        emit FlashLoanPrivate(
+          block.timestamp,
+          referralCode
+        );
+      } else {
+        emit FlashLoan(
+          receiverAddress,
+          msg.sender,
+          vars.currentAsset,
+          vars.currentAmount,
+          vars.currentPremium,
+          referralCode
+        );
+      }
+    
     }
   }
 
@@ -591,6 +645,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     external
     view
     override
+    onlyAllowedWhenPrivate(user) // Privacy feature
     returns (
       uint256 totalCollateralETH,
       uint256 totalDebtETH,
@@ -645,6 +700,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     external
     view
     override
+    onlyAllowedWhenPrivate(user)
     returns (DataTypes.UserConfigurationMap memory)
   {
     return _usersConfig[user];
@@ -761,13 +817,13 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       if (balanceFromBefore.sub(amount) == 0) {
         DataTypes.UserConfigurationMap storage fromConfig = _usersConfig[from];
         fromConfig.setUsingAsCollateral(reserveId, false);
-        emit ReserveUsedAsCollateralDisabled(asset, from);
+        emit ReserveUsedAsCollateralDisabled(asset, privacyEnabled ? address(0) :  from);
       }
 
       if (balanceToBefore == 0 && amount != 0) {
         DataTypes.UserConfigurationMap storage toConfig = _usersConfig[to];
         toConfig.setUsingAsCollateral(reserveId, true);
-        emit ReserveUsedAsCollateralEnabled(asset, to);
+        emit ReserveUsedAsCollateralEnabled(asset, privacyEnabled ? address(0) :  to);
       }
     }
   }
@@ -916,17 +972,25 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
     }
 
-    emit Borrow(
-      vars.asset,
-      vars.user,
-      vars.onBehalfOf,
-      vars.amount,
-      vars.interestRateMode,
-      DataTypes.InterestRateMode(vars.interestRateMode) == DataTypes.InterestRateMode.STABLE
-        ? currentStableRate
-        : reserve.currentVariableBorrowRate,
-      vars.referralCode
-    );
+     //Privacy feature --- limit the emit data
+    if (privacyEnabled) {
+      emit BorrowPrivate(
+        block.timestamp,
+        vars.referralCode
+      );
+    } else {
+      emit Borrow(
+        vars.asset,
+        vars.user,
+        vars.onBehalfOf,
+        vars.amount,
+        vars.interestRateMode,
+        DataTypes.InterestRateMode(vars.interestRateMode) == DataTypes.InterestRateMode.STABLE
+          ? currentStableRate
+          : reserve.currentVariableBorrowRate,
+        vars.referralCode
+      );
+    }
   }
 
   function _addReserveToList(address asset) internal {

@@ -57,6 +57,31 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     pool = ILendingPool(addressesProvider.getLendingPool());
   }
 
+
+  /** Privacy mode features  */
+
+  function setPrivacyEnabled(bool privacyEnabled) external onlyPoolAdmin {
+      pool.setPrivacyEnabled(privacyEnabled);
+  }
+
+  function whitelistAddressesOnLendingPool(address[] calldata _addresses, bool _isWhitelisted) external onlyPoolAdmin {
+      pool.whitelistAddresses(_addresses, _isWhitelisted);
+  }
+
+  function setPrivacyEnabledToken(address aToken, bool enabled) external onlyPoolAdmin 
+  {
+      pool.setPrivacyEnabledToken(aToken, enabled);
+  }
+
+  function setPrivacyTokenWhitelist(address aToken, address[] calldata _whitelist) external onlyPoolAdmin 
+  {
+      pool.setPrivacyTokenWhitelist(aToken, _whitelist);
+  }
+  function removePrivacyTokenWhitelist(address aToken, address[] calldata _whitelist) external onlyPoolAdmin 
+  {
+      pool.removePrivacyTokenWhitelist(aToken, _whitelist);
+  }
+
   /**
    * @dev Initializes reserves in batch
    **/

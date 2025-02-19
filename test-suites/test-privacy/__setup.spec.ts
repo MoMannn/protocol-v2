@@ -126,6 +126,7 @@ const buildTestEnv = async (deployer: Signer, secondaryWallet: Signer) => {
   const lendingPoolProxy = await getLendingPool(lendingPoolAddress);
 
   await insertContractAddressInDb(eContractid.LendingPool, lendingPoolProxy.address);
+  console.log('Is lending pool privacy enabled?', await lendingPoolProxy.privacyEnabled());
 
   const lendingPoolConfiguratorImpl = await deployLendingPoolConfigurator();
   await waitForTx(
@@ -139,10 +140,6 @@ const buildTestEnv = async (deployer: Signer, secondaryWallet: Signer) => {
     eContractid.LendingPoolConfigurator,
     lendingPoolConfiguratorProxy.address
   );
-
-  console.log('Diabling privacy mode for classic AAVE tests -- lending pool');
-  await lendingPoolConfiguratorProxy.setPrivacyEnabled(false);
-  console.log('Is lendingPoolProxy pool private ', await lendingPoolProxy.privacyEnabled());
 
   // Deploy deployment helpers
   await deployStableAndVariableTokensHelper([lendingPoolProxy.address, addressesProvider.address]);
@@ -258,8 +255,6 @@ const buildTestEnv = async (deployer: Signer, secondaryWallet: Signer) => {
   };
 
   const testHelpers = await deployAaveProtocolDataProvider(addressesProvider.address);
-  console.log('Diabling privacy mode for classic AAVE tests -- aave protocol data provider');
-  await testHelpers.setPrivacyEnabled(false);
 
   await deployATokenImplementations(ConfigNames.Aave, reservesParams, false);
 
@@ -285,13 +280,19 @@ const buildTestEnv = async (deployer: Signer, secondaryWallet: Signer) => {
 
   await configureReservesByHelper(reservesParams, allReservesAddresses, testHelpers as any, admin);
 
-  console.log('Disabling privacy for all aTokens');
+  console.log(
+    'Privacy update -- Setting up whitelist for all reserve tokens, to allow lending pool and test helpers to interact with them'
+  );
   for (const token of addreses) {
     if (token.aToken) {
-      lendingPoolConfiguratorProxy.setPrivacyEnabledToken(token.aToken, false);
-      console.log('Disabled privacy for aToken from:', token.name, token.aToken);
+      await lendingPoolConfiguratorProxy.setPrivacyTokenWhitelist(token.aToken, [
+        lendingPoolAddress,
+        testHelpers.address,
+      ]);
+      console.log('Updateing whitelist:', token.name, token.aToken);
     }
   }
+  await lendingPoolConfiguratorProxy.whitelistAddressesOnLendingPool([testHelpers.address], true);
 
   const collateralManager = await deployLendingPoolCollateralManager();
   await waitForTx(

@@ -114,18 +114,19 @@ contract ParaSwapLiquiditySwapAdapter is BaseParaSwapSellAdapter, ReentrancyGuar
     IERC20WithPermit aToken =
       IERC20WithPermit(_getReserveData(address(assetToSwapFrom)).aTokenAddress);
 
+      _activatePermit(aToken, msg.sender, permitParams);
+
     if (swapAllBalanceOffset != 0) {
       uint256 balance = aToken.balanceOf(msg.sender);
       require(balance <= amountToSwap, 'INSUFFICIENT_AMOUNT_TO_SWAP');
       amountToSwap = balance;
     }
 
-    _pullATokenAndWithdraw(
+    _pullATokenAndWithdrawAlreadyPermitted(
       address(assetToSwapFrom),
       aToken,
       msg.sender,
-      amountToSwap,
-      permitParams
+      amountToSwap
     );
 
     uint256 amountReceived = _sellOnParaSwap(
@@ -171,7 +172,7 @@ contract ParaSwapLiquiditySwapAdapter is BaseParaSwapSellAdapter, ReentrancyGuar
     IERC20WithPermit aToken =
       IERC20WithPermit(_getReserveData(address(assetToSwapFrom)).aTokenAddress);
     uint256 amountToSwap = flashLoanAmount;
-
+    _activatePermit(aToken, initiator, permitParams);
     uint256 balance = aToken.balanceOf(initiator);
     if (swapAllBalanceOffset != 0) {
       uint256 balanceToSwap = balance.sub(premium);
@@ -195,12 +196,11 @@ contract ParaSwapLiquiditySwapAdapter is BaseParaSwapSellAdapter, ReentrancyGuar
     assetToSwapTo.safeApprove(address(LENDING_POOL), amountReceived);
     LENDING_POOL.deposit(address(assetToSwapTo), amountReceived, initiator, 0);
 
-    _pullATokenAndWithdraw(
+     _pullATokenAndWithdrawAlreadyPermitted(
       address(assetToSwapFrom),
       aToken,
       initiator,
-      amountToSwap.add(premium),
-      permitParams
+      amountToSwap.add(premium)
     );
 
     // Repay flash loan

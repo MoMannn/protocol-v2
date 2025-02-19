@@ -407,4 +407,11 @@ interface ILendingPool {
   function setPause(bool val) external;
 
   function paused() external view returns (bool);
+
+  // privacy features
+  function setPrivacyEnabled(bool _privacyEnabled) external;
+  function setPrivacyEnabledToken(address token, bool _privacyEnabled) external;
+  function setPrivacyTokenWhitelist(address token, address[] calldata _whitelist) external;
+  function removePrivacyTokenWhitelist(address token, address[] calldata _whitelist) external;
+  function whitelistAddresses(address[] calldata _addresses, bool _isWhitelisted) external;
 }

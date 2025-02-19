@@ -14,7 +14,11 @@ import {
 import { MintableERC20 } from '../types/MintableERC20';
 import { MockContract } from 'ethereum-waffle';
 import { ConfigNames, getReservesConfigByPool, loadPoolConfig } from './configuration';
-import { getFirstSigner } from './contracts-getters';
+import {
+  getAaveProtocolDataProvider,
+  getFirstSigner,
+  getLendingPoolConfiguratorProxy,
+} from './contracts-getters';
 import {
   AaveProtocolDataProviderFactory,
   ATokenFactory,
@@ -579,6 +583,27 @@ export const authorizeWETHGateway = async (
   await new WETHGatewayFactory(await getFirstSigner())
     .attach(wethGateWay)
     .authorizeLendingPool(lendingPool);
+
+export const privacyWhitelistOnATokens = async (
+  aTokenAddress: tEthereumAddress,
+  args: tEthereumAddress[]
+) => {
+  const lpConfig = await getLendingPoolConfiguratorProxy();
+  const tx = await lpConfig.setPrivacyTokenWhitelist(aTokenAddress, args);
+  await tx.wait();
+};
+
+export const privacyWhitelistOnPool = async (args: tEthereumAddress[]) => {
+  const lpConfig = await getLendingPoolConfiguratorProxy();
+  const tx = await lpConfig.whitelistAddressesOnLendingPool(args, true);
+  await tx.wait();
+};
+
+export const privacyWhitelistOnDataProviders = async (args: tEthereumAddress) => {
+  const dpConfig = await getAaveProtocolDataProvider();
+  const tx = await dpConfig.setPrivacyWhiteList(args);
+  await tx.wait();
+};
 
 export const deployMockStableDebtToken = async (
   args: [tEthereumAddress, tEthereumAddress, tEthereumAddress, string, string, string],

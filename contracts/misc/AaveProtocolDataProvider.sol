@@ -10,8 +10,10 @@ import {IVariableDebtToken} from '../interfaces/IVariableDebtToken.sol';
 import {ReserveConfiguration} from '../protocol/libraries/configuration/ReserveConfiguration.sol';
 import {UserConfiguration} from '../protocol/libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '../protocol/libraries/types/DataTypes.sol';
+import {PrivacyFeatures} from "../protocol/privacy/PrivacyFeatures.sol";
+import {Ownable} from '../dependencies/openzeppelin/contracts/Ownable.sol';
 
-contract AaveProtocolDataProvider {
+contract AaveProtocolDataProvider is Ownable, PrivacyFeatures {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using UserConfiguration for DataTypes.UserConfigurationMap;
 
@@ -27,6 +29,19 @@ contract AaveProtocolDataProvider {
 
   constructor(ILendingPoolAddressesProvider addressesProvider) public {
     ADDRESSES_PROVIDER = addressesProvider;
+  }
+
+  /* Privacy features */
+  function setPrivacyEnabled(bool _privacyEnabled) external onlyOwner() {
+      privacyEnabled = _privacyEnabled;
+  }
+
+  function setPrivacyWhiteList(address _address) external onlyOwner() {
+      privacyReadEnabledAddresses[_address] = true;
+  }
+
+  function removePrivacyWhiteList(address _address) external onlyOwner() {
+      privacyReadEnabledAddresses[_address] = false;
   }
 
   function getAllReservesTokens() external view returns (TokenData[] memory) {
@@ -128,6 +143,7 @@ contract AaveProtocolDataProvider {
   function getUserReserveData(address asset, address user)
     external
     view
+    onlyAllowedWhenPrivate(user)
     returns (
       uint256 currentATokenBalance,
       uint256 currentStableDebt,

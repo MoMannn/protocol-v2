@@ -79,6 +79,49 @@ abstract contract BaseParaSwapAdapter is FlashLoanReceiverBase, Ownable {
    * @param reserveAToken address of the aToken of the reserve
    * @param user address
    * @param amount of tokens to be transferred to the contract
+   */
+  function _pullATokenAndWithdrawAlreadyPermitted(
+    address reserve,
+    IERC20WithPermit reserveAToken,
+    address user,
+    uint256 amount
+  ) internal {
+  
+    // transfer from user to adapter
+    reserveAToken.safeTransferFrom(user, address(this), amount);
+
+    // withdraw reserve
+    require(
+      LENDING_POOL.withdraw(reserve, amount, address(this)) == amount,
+      'UNEXPECTED_AMOUNT_WITHDRAWN'
+    );
+  }
+
+  function _activatePermit(
+    IERC20WithPermit reserveAToken,
+    address user,
+    PermitSignature memory permitSignature) internal {
+    // If deadline is set to zero, assume there is no signature for permit
+    if (permitSignature.deadline != 0) {
+
+      reserveAToken.permit(
+        user,
+        address(this),
+        permitSignature.amount,
+        permitSignature.deadline,
+        permitSignature.v,
+        permitSignature.r,
+        permitSignature.s
+      );
+    }
+  }
+
+  /**
+   * @dev Pull the ATokens from the user
+   * @param reserve address of the asset
+   * @param reserveAToken address of the aToken of the reserve
+   * @param user address
+   * @param amount of tokens to be transferred to the contract
    * @param permitSignature struct containing the permit signature
    */
   function _pullATokenAndWithdraw(
@@ -88,7 +131,8 @@ abstract contract BaseParaSwapAdapter is FlashLoanReceiverBase, Ownable {
     uint256 amount,
     PermitSignature memory permitSignature
   ) internal {
-    // If deadline is set to zero, assume there is no signature for permit
+  
+  // If deadline is set to zero, assume there is no signature for permit
     if (permitSignature.deadline != 0) {
       reserveAToken.permit(
         user,
@@ -100,7 +144,6 @@ abstract contract BaseParaSwapAdapter is FlashLoanReceiverBase, Ownable {
         permitSignature.s
       );
     }
-
     // transfer from user to adapter
     reserveAToken.safeTransferFrom(user, address(this), amount);
 
@@ -119,4 +162,5 @@ abstract contract BaseParaSwapAdapter is FlashLoanReceiverBase, Ownable {
   function rescueTokens(IERC20 token) external onlyOwner {
     token.safeTransfer(owner(), token.balanceOf(address(this)));
   }
+
 }

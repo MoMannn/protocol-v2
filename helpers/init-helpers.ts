@@ -82,6 +82,14 @@ export const initReservesByHelper = async (
   let rateStrategies: Record<string, typeof strategyRates> = {};
   let strategyAddresses: Record<string, tEthereumAddress> = {};
 
+  const deployedAddresses: {
+    name: string;
+    asset: string;
+    aToken: string;
+    stableDebtToken: string;
+    variableDebtToken: string;
+  }[] = [];
+
   const reserves = Object.entries(reservesParams);
 
   for (let [symbol, params] of reserves) {
@@ -164,10 +172,20 @@ export const initReservesByHelper = async (
     const tx3 = await waitForTx(
       await configurator.batchInitReserve(chunkedInitInputParams[chunkIndex])
     );
+    const event = tx3.events?.find((event: any) => event.event === 'ReserveInitialized');
+    deployedAddresses.push({
+      name: chunkedSymbols[chunkIndex].join(', '),
+      asset: event?.args?.asset,
+      aToken: event?.args?.aToken,
+      stableDebtToken: event?.args?.stableDebtToken,
+      variableDebtToken: event?.args?.variableDebtToken,
+    });
 
     console.log(`  - Reserve ready for: ${chunkedSymbols[chunkIndex].join(', ')}`);
     console.log('    * gasUsed', tx3.gasUsed.toString());
   }
+
+  return deployedAddresses;
 };
 
 export const getPairsTokenAggregator = (

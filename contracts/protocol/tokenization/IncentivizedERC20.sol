@@ -6,18 +6,19 @@ import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 import {IERC20Detailed} from '../../dependencies/openzeppelin/contracts/IERC20Detailed.sol';
 import {SafeMath} from '../../dependencies/openzeppelin/contracts/SafeMath.sol';
 import {IAaveIncentivesController} from '../../interfaces/IAaveIncentivesController.sol';
+import {PrivacyFeatures} from "../privacy/PrivacyFeatures.sol";
 
 /**
  * @title ERC20
  * @notice Basic ERC20 implementation
  * @author Aave, inspired by the Openzeppelin ERC20 implementation
  **/
-abstract contract IncentivizedERC20 is Context, IERC20, IERC20Detailed {
+abstract contract IncentivizedERC20 is Context, IERC20, IERC20Detailed, PrivacyFeatures {
   using SafeMath for uint256;
 
   mapping(address => uint256) internal _balances;
 
-  mapping(address => mapping(address => uint256)) private _allowances;
+  mapping(address => mapping(address => uint256)) internal _allowances;
   uint256 internal _totalSupply;
   string private _name;
   string private _symbol;
@@ -32,6 +33,7 @@ abstract contract IncentivizedERC20 is Context, IERC20, IERC20Detailed {
     _symbol = symbol;
     _decimals = decimals;
   }
+  
 
   /**
    * @return The name of the token
@@ -82,7 +84,10 @@ abstract contract IncentivizedERC20 is Context, IERC20, IERC20Detailed {
    **/
   function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
     _transfer(_msgSender(), recipient, amount);
-    emit Transfer(_msgSender(), recipient, amount);
+
+    // Private features
+    // emit Transfer(_msgSender(), recipient, amount);
+    emit Transfer(address(0), address(0), amount);
     return true;
   }
 
@@ -99,6 +104,8 @@ abstract contract IncentivizedERC20 is Context, IERC20, IERC20Detailed {
     override
     returns (uint256)
   {
+    // Private features
+    require(canExposeToRead(owner) || canExposeToRead(spender), RESTRICTION_MESSAGE);
     return _allowances[owner][spender];
   }
 
@@ -130,7 +137,10 @@ abstract contract IncentivizedERC20 is Context, IERC20, IERC20Detailed {
       _msgSender(),
       _allowances[sender][_msgSender()].sub(amount, 'ERC20: transfer amount exceeds allowance')
     );
-    emit Transfer(sender, recipient, amount);
+
+    // Private features
+    // emit Transfer(sender, recipient, amount);
+    emit Transfer(address(0), address(0), amount);
     return true;
   }
 
@@ -232,7 +242,10 @@ abstract contract IncentivizedERC20 is Context, IERC20, IERC20Detailed {
     require(spender != address(0), 'ERC20: approve to the zero address');
 
     _allowances[owner][spender] = amount;
-    emit Approval(owner, spender, amount);
+    
+    // Private features
+    // emit Approval(owner, spender, amount);
+    emit Approval(address(0), address(0), amount);
   }
 
   function _setName(string memory newName) internal {

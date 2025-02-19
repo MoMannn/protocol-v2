@@ -5,6 +5,8 @@ import {
   deployWalletBalancerProvider,
   authorizeWETHGateway,
   deployUiPoolDataProviderV2,
+  privacyWhitelistOnATokens,
+  privacyWhitelistOnPool,
 } from '../../helpers/contracts-deployments';
 import { loadPoolConfig, ConfigNames, getTreasuryAddress } from '../../helpers/configuration';
 import { getWETHGateway } from '../../helpers/contracts-getters';
@@ -53,7 +55,7 @@ task('full:initialize-lending-pool', 'Initialize lending pool configuration.')
 
       const treasuryAddress = await getTreasuryAddress(poolConfig);
 
-      await initReservesByHelper(
+      const addresses = await initReservesByHelper(
         ReservesConfig,
         reserveAssets,
         ATokenNamePrefix,
@@ -101,6 +103,21 @@ task('full:initialize-lending-pool', 'Initialize lending pool configuration.')
       await deployWalletBalancerProvider(verify);
 
       const lendingPoolAddress = await addressesProvider.getLendingPool();
+
+      // Whitelist privacy between lending contracts
+      // These whitelistings are necessary for the tokens to be able to read data from the data provider and lending pool
+      for (const token of addresses) {
+        if (token.aToken) {
+          console.log(`Whitelisting privacy for token ${token.aToken}`);
+          await privacyWhitelistOnATokens(token.aToken, [
+            lendingPoolAddress,
+            aaveProtocolDataProvider.address,
+          ]);
+        }
+      }
+
+      // These whitelistings are necessary for the lending pool to be able to read data from the data provider
+      await privacyWhitelistOnPool([aaveProtocolDataProvider.address]);
 
       let gateWay = getParamPerNetwork(WethGateway, network);
       if (!notFalsyOrZeroAddress(gateWay)) {
