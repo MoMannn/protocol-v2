@@ -103,6 +103,29 @@ export const getUserData = async (
   };
 };
 
+export const getUserDataPrivate = async (
+  pool: LendingPool,
+  helper: AaveProtocolDataProvider,
+  reserve: string,
+  userId: number,
+): Promise<UserReserveData> => {
+  const userData = await helper.getUserReserveDataPrivate(reserve, userId);
+
+  return {
+    scaledATokenBalance: new BigNumber(0), // can't get data
+    currentATokenBalance: new BigNumber(userData.currentATokenBalance.toString()),
+    currentStableDebt: new BigNumber(userData.currentStableDebt.toString()),
+    currentVariableDebt: new BigNumber(userData.currentVariableDebt.toString()),
+    principalStableDebt: new BigNumber(userData.principalStableDebt.toString()),
+    scaledVariableDebt: new BigNumber(userData.scaledVariableDebt.toString()),
+    stableBorrowRate: new BigNumber(userData.stableBorrowRate.toString()),
+    liquidityRate: new BigNumber(userData.liquidityRate.toString()),
+    usageAsCollateralEnabled: userData.usageAsCollateralEnabled,
+    stableRateLastUpdated: new BigNumber(userData.stableRateLastUpdated.toString()),
+    walletBalance: new BigNumber(0), // can't get data
+  };
+};
+
 export const getReserveAddressFromSymbol = async (symbol: string) => {
   const token = await getMintableERC20(
     (await getDb().get(`${symbol}.${DRE.network.name}`).value()).address

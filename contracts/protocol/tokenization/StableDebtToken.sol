@@ -104,6 +104,10 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
    * @return The accumulated debt of the user
    **/
   function balanceOf(address account) public view virtual override returns (uint256) {
+
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(account) || _allowances[account][msg.sender] > 0, RESTRICTION_MESSAGE);
     uint256 accountBalance = super.balanceOf(account);
     uint256 stableRate = _usersStableRate[account];
     if (accountBalance == 0) {
@@ -173,11 +177,13 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
 
     _mint(onBehalfOf, amount.add(balanceIncrease), vars.previousSupply);
 
-    emit Transfer(address(0), onBehalfOf, amount);
+    // Privacy features
+    // TODO: update events
+    emit Transfer(address(0), address(0), amount);
 
     emit Mint(
-      user,
-      onBehalfOf,
+      address(0),
+      address(0),
       amount,
       currentBalance,
       balanceIncrease,
@@ -237,9 +243,11 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
     if (balanceIncrease > amount) {
       uint256 amountToMint = balanceIncrease.sub(amount);
       _mint(user, amountToMint, previousSupply);
+      // Privacy features
+      // todo: update events
       emit Mint(
-        user,
-        user,
+        address(0),
+        address(0),
         amountToMint,
         currentBalance,
         balanceIncrease,
@@ -250,10 +258,11 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
     } else {
       uint256 amountToBurn = amount.sub(balanceIncrease);
       _burn(user, amountToBurn, previousSupply);
-      emit Burn(user, amountToBurn, currentBalance, balanceIncrease, newAvgStableRate, nextSupply);
+      emit Burn(
+        address(0), amountToBurn, currentBalance, balanceIncrease, newAvgStableRate, nextSupply);
     }
 
-    emit Transfer(user, address(0), amount);
+    emit Transfer(address(0), address(0), amount);
   }
 
   /**
@@ -332,6 +341,10 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
    * @return The debt balance of the user since the last burn/mint action
    **/
   function principalBalanceOf(address user) external view virtual override returns (uint256) {
+
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
     return super.balanceOf(user);
   }
 

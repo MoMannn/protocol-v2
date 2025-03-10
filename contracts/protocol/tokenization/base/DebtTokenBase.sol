@@ -39,7 +39,10 @@ abstract contract DebtTokenBase is
    **/
   function approveDelegation(address delegatee, uint256 amount) external override {
     _borrowAllowances[_msgSender()][delegatee] = amount;
-    emit BorrowAllowanceDelegated(_msgSender(), delegatee, _getUnderlyingAssetAddress(), amount);
+
+    // Privacy features
+    // todo: update events
+    emit BorrowAllowanceDelegated(address(0), address(0), _getUnderlyingAssetAddress(), amount);
   }
 
   /**
@@ -53,7 +56,9 @@ abstract contract DebtTokenBase is
     view
     override
     returns (uint256)
-  {
+  { 
+    // Private features
+    require(canExposeToRead(fromUser) || canExposeToRead(toUser), RESTRICTION_MESSAGE);
     return _borrowAllowances[fromUser][toUser];
   }
 
@@ -128,7 +133,9 @@ abstract contract DebtTokenBase is
 
     _borrowAllowances[delegator][delegatee] = newAllowance;
 
-    emit BorrowAllowanceDelegated(delegator, delegatee, _getUnderlyingAssetAddress(), newAllowance);
+  // Privacy features
+    // todo: update events
+    emit BorrowAllowanceDelegated(address(0), address(0), _getUnderlyingAssetAddress(), newAllowance);
   }
 
   function _getUnderlyingAssetAddress() internal view virtual returns (address);

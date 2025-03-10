@@ -26,6 +26,7 @@ import {UserConfiguration} from '../libraries/configuration/UserConfiguration.so
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
 import {PrivacyFeatures} from '../privacy/PrivacyFeatures.sol';
+import {Sapphire} from '../privacy/Sapphire.sol';
 
 /**
  * @title LendingPool contract
@@ -147,18 +148,23 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     bool isFirstDeposit = IAToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
 
+    uint256 userId = _getUserId(onBehalfOf);
+
     if (isFirstDeposit) {
       _usersConfig[onBehalfOf].setUsingAsCollateral(reserve.id, true);
-      emit ReserveUsedAsCollateralEnabled(asset, privacyEnabled ? address(0) : onBehalfOf);
+      if (privacyEnabled) {
+        emit ReserveUsedAsCollateralEnabledPrivate(userId);
+      } else {
+        emit ReserveUsedAsCollateralEnabled(asset, onBehalfOf);
+      }
     }
 
-     //Privacy feature --- limit the emit data
+    //Privacy feature --- limit the emit data
     if (privacyEnabled) {
-      emit DepositPrivate(block.timestamp, referralCode);
+      emit DepositPrivate(userId, referralCode);
     } else {
       emit Deposit(asset, msg.sender, onBehalfOf, amount, referralCode);
     }
-
   }
 
   /**
@@ -204,16 +210,22 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     reserve.updateInterestRates(asset, aToken, 0, amountToWithdraw);
 
+    uint256 userId = _getUserId(msg.sender);
+
     if (amountToWithdraw == userBalance) {
       _usersConfig[msg.sender].setUsingAsCollateral(reserve.id, false);
-      emit ReserveUsedAsCollateralDisabled(asset, privacyEnabled ? address(0) : msg.sender);
+      if (privacyEnabled) {
+        emit ReserveUsedAsCollateralDisabledPrivate(userId);
+      } else {
+        emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
+      }
     }
 
     IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
 
     //Privacy feature --- limit the emit data
     if (privacyEnabled) {
-      emit WithdrawPrivate(block.timestamp);
+      emit WithdrawPrivate(userId);
     } else {
       emit Withdraw(asset, msg.sender, to, amountToWithdraw);
     }
@@ -324,7 +336,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     //Privacy feature --- limit the emit data
     if (privacyEnabled) {
-      emit WithdrawPrivate(block.timestamp);
+      uint256 userId = _getUserId(msg.sender);
+      emit RepayPrivate(userId);
     } else {
       emit Repay(asset, onBehalfOf, msg.sender, paybackAmount);
     }
@@ -379,7 +392,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     reserve.updateInterestRates(asset, reserve.aTokenAddress, 0, 0);
 
     // Privacy feature 
-    emit Swap(asset, privacyEnabled ? address(0) :  msg.sender, rateMode);
+    if (privacyEnabled) {
+      uint256 userId = _getUserId(msg.sender);
+      emit SwapPrivate(userId);
+    } else {
+      emit Swap(asset, msg.sender, rateMode);
+    }
   }
 
   /**
@@ -420,8 +438,13 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     reserve.updateInterestRates(asset, aTokenAddress, 0, 0);
 
-    // Privacy feature 
-    emit RebalanceStableBorrowRate(asset, privacyEnabled ? address(0) : user);
+    // Privacy feature
+    if (privacyEnabled) {
+      uint256 userId = _getUserId(msg.sender);
+      emit RebalanceStableBorrowRatePrivate(userId);
+    } else {
+      emit RebalanceStableBorrowRate(asset, user);
+    }
   }
 
   /**
@@ -449,10 +472,22 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     _usersConfig[msg.sender].setUsingAsCollateral(reserve.id, useAsCollateral);
 
-    if (useAsCollateral) {
-      emit ReserveUsedAsCollateralEnabled(asset, privacyEnabled ? address(0) :  msg.sender);
+    if (useAsCollateral) {  
+      // Privacy feature
+      if (privacyEnabled) {
+        uint256 userId = _getUserId(msg.sender);
+        emit ReserveUsedAsCollateralEnabledPrivate(userId);
+      } else {
+        emit ReserveUsedAsCollateralEnabled(asset, msg.sender);
+      }
     } else {
-      emit ReserveUsedAsCollateralDisabled(asset, privacyEnabled ? address(0) :  msg.sender);
+        // Privacy feature
+      if (privacyEnabled) {
+        uint256 userId = _getUserId(msg.sender);
+        emit ReserveUsedAsCollateralDisabledPrivate(userId);
+      } else {
+        emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
+      }
     }
   }
 
@@ -475,6 +510,47 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     bool receiveAToken
   ) external override whenNotPaused {
     address collateralManager = _addressesProvider.getLendingPoolCollateralManager();
+
+    //solium-disable-next-line
+    (bool success, bytes memory result) =
+      collateralManager.delegatecall(
+        abi.encodeWithSignature(
+          'liquidationCall(address,address,address,uint256,bool)',
+          collateralAsset,
+          debtAsset,
+          user,
+          debtToCover,
+          receiveAToken
+        )
+      );
+
+    require(success, Errors.LP_LIQUIDATION_CALL_FAILED);
+
+    (uint256 returnCode, string memory returnMessage) = abi.decode(result, (uint256, string));
+
+    require(returnCode == 0, string(abi.encodePacked(returnMessage)));
+  }
+
+   /**
+   * @dev Function to liquidate a non-healthy position collateral-wise, with Health Factor below 1
+   * - The caller (liquidator) covers `debtToCover` amount of debt of the user getting liquidated, and receives
+   *   a proportionally amount of the `collateralAsset` plus a bonus to cover market risk
+   * @param collateralAsset The address of the underlying asset used as collateral, to receive as result of the liquidation
+   * @param debtAsset The address of the underlying borrowed asset to be repaid with the liquidation
+   * @param userId The id of the borrower getting liquidated
+   * @param debtToCover The debt amount of borrowed `asset` the liquidator wants to cover
+   * @param receiveAToken `true` if the liquidators wants to receive the collateral aTokens, `false` if he wants
+   * to receive the underlying collateral asset directly
+   **/
+  function liquidationCallPrivate(
+    address collateralAsset,
+    address debtAsset,
+    uint256 userId,
+    uint256 debtToCover,
+    bool receiveAToken
+  ) external whenNotPaused {
+    address collateralManager = _addressesProvider.getLendingPoolCollateralManager();
+    address user = _privateIdToUser[userId];
 
     //solium-disable-next-line
     (bool success, bytes memory result) =
@@ -677,6 +753,54 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     );
   }
 
+   /**
+   * @dev Returns the user account data across all the reserves
+   * @param userId The Id of the user
+   * @return totalCollateralETH the total collateral in ETH of the user
+   * @return totalDebtETH the total debt in ETH of the user
+   * @return availableBorrowsETH the borrowing power left of the user
+   * @return currentLiquidationThreshold the liquidation threshold of the user
+   * @return ltv the loan to value of the user
+   * @return healthFactor the current health factor of the user
+   **/
+  function getUserAccountDataPrivate(uint256 userId)
+    external
+    view
+    returns (
+      uint256 totalCollateralETH,
+      uint256 totalDebtETH,
+      uint256 availableBorrowsETH,
+      uint256 currentLiquidationThreshold,
+      uint256 ltv,
+      uint256 healthFactor
+    )
+  {
+    address user = _privateIdToUser[userId];
+    (
+      totalCollateralETH,
+      totalDebtETH,
+      ltv,
+      currentLiquidationThreshold,
+      healthFactor
+    ) = GenericLogic.calculateUserAccountData(
+      user,
+      _reserves,
+      _usersConfig[user],
+      _reservesList,
+      _reservesCount,
+      _addressesProvider.getPriceOracle()
+    );
+
+   // require(healthFactor <= 1 ether || msg.sender == user, "Loan healthy");
+
+    availableBorrowsETH = GenericLogic.calculateAvailableBorrowsETH(
+      totalCollateralETH,
+      totalDebtETH,
+      ltv
+    );
+
+  }
+
   /**
    * @dev Returns the configuration of the reserve
    * @param asset The address of the underlying asset of the reserve
@@ -705,6 +829,22 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   {
     return _usersConfig[user];
   }
+
+    /**
+   * @dev Returns the configuration of the user across all the reserves
+   * @param userId The user id.
+   * @return The configuration of the user
+   **/
+  function getUserConfigurationPrivate(uint256 userId)
+    external
+    view
+    override
+    returns (DataTypes.UserConfigurationMap memory)
+  {
+    address user = _privateIdToUser[userId];
+    return _usersConfig[user];
+  }
+
 
   /**
    * @dev Returns the normalized income per unit of asset
@@ -974,8 +1114,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
      //Privacy feature --- limit the emit data
     if (privacyEnabled) {
+      uint256 usedId = _getUserId(vars.onBehalfOf);
       emit BorrowPrivate(
-        block.timestamp,
+        usedId,
         vars.referralCode
       );
     } else {
@@ -1006,5 +1147,31 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
       _reservesCount = reservesCount + 1;
     }
+  }
+
+  function getUser(uint256 userId) external view onlyPrivayEnabledAddresses override returns (address) {
+    return _privateIdToUser[userId];
+  }
+
+  /**
+   * @dev Internal function to retrieve the user ID for a given address.
+   * @param user The address of the user for whom the ID is being retrieved.
+   * @return userId The ID of the user.
+   */
+  function _getUserId(address user) internal returns (uint256) {
+    if (privacyEnabled) {
+      uint256 userId = _privateUserToId[user];
+      if (userId == 0) {
+        bytes memory randomData = Sapphire.randomBytes(32, "Kardinal");
+        assembly {
+            userId := mload(add(randomData, 0x20)) // Load the first 32 bytes
+        }
+        _privateUserToId[user] = userId;
+        _privateIdToUser[userId] = user;
+      }
+
+      return userId;
+    }
+    return 0;
   }
 }

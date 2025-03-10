@@ -175,6 +175,43 @@ contract AaveProtocolDataProvider is Ownable, PrivacyFeatures {
     usageAsCollateralEnabled = userConfig.isUsingAsCollateral(reserve.id);
   }
 
+  function getUserReserveDataPrivate(address asset, uint256 userId)
+    external
+    view
+    returns (
+      uint256 currentATokenBalance,
+      uint256 currentStableDebt,
+      uint256 currentVariableDebt,
+      uint256 principalStableDebt,
+      uint256 scaledVariableDebt,
+      uint256 stableBorrowRate,
+      uint256 liquidityRate,
+      uint40 stableRateLastUpdated,
+      bool usageAsCollateralEnabled
+    )
+  {
+    DataTypes.ReserveData memory reserve =
+      ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getReserveData(asset);
+
+    address user = ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getUser(userId);
+
+    DataTypes.UserConfigurationMap memory userConfig =
+      ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getUserConfiguration(user);
+
+    currentATokenBalance = IERC20Detailed(reserve.aTokenAddress).balanceOf(user);
+    currentVariableDebt = IERC20Detailed(reserve.variableDebtTokenAddress).balanceOf(user);
+    currentStableDebt = IERC20Detailed(reserve.stableDebtTokenAddress).balanceOf(user);
+    principalStableDebt = IStableDebtToken(reserve.stableDebtTokenAddress).principalBalanceOf(user);
+    scaledVariableDebt = IVariableDebtToken(reserve.variableDebtTokenAddress).scaledBalanceOf(user);
+    liquidityRate = reserve.currentLiquidityRate;
+    stableBorrowRate = IStableDebtToken(reserve.stableDebtTokenAddress).getUserStableRate(user);
+    stableRateLastUpdated = IStableDebtToken(reserve.stableDebtTokenAddress).getUserLastUpdated(
+      user
+    );
+    usageAsCollateralEnabled = userConfig.isUsingAsCollateral(reserve.id);
+  }
+
+
   function getReserveTokensAddresses(address asset)
     external
     view

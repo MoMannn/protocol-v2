@@ -414,4 +414,6 @@ interface ILendingPool {
   function setPrivacyTokenWhitelist(address token, address[] calldata _whitelist) external;
   function removePrivacyTokenWhitelist(address token, address[] calldata _whitelist) external;
   function whitelistAddresses(address[] calldata _addresses, bool _isWhitelisted) external;
+  function getUser(uint256 userId) external view returns (address);
+  function getUserConfigurationPrivate(uint256 userId) external view returns (DataTypes.UserConfigurationMap memory);
 }

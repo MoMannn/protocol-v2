@@ -235,11 +235,11 @@ contract AToken is
     view
     override(IncentivizedERC20, IERC20)
     returns (uint256)
-  {
+  { 
+
     // privacy feature
     // Balance of user is only show to user or user approved addresses
     require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
-    
     return super.balanceOf(user).rayMul(_pool.getReserveNormalizedIncome(_underlyingAsset));
   }
 
@@ -252,6 +252,7 @@ contract AToken is
   function scaledBalanceOf(address user) external view override 
     returns (uint256)
   {
+
     // privacy feature
     // Balance of user is only show to user or user approved addresses
     require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
@@ -270,6 +271,7 @@ contract AToken is
     override
     returns (uint256, uint256)
   {
+
     // privacy feature
     // Balance of user is only show to user or user approved addresses
     require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);

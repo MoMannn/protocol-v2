@@ -102,6 +102,37 @@ export const getUserData = async (
   };
 };
 
+export const getUserDataPrivate = async (
+  pool: LendingPool,
+  helper: AaveProtocolDataProvider,
+  reserve: string,
+  userId: number,
+  sender?: tEthereumAddress
+): Promise<UserReserveData> => {
+  const [userData, scaledATokenBalance] = await Promise.all([
+    helper.getUserReserveDataPrivate(reserve, userId),
+    getATokenUserData(reserve, user, helper),
+  ]);
+
+  const token = await getMintableERC20(reserve);
+  const walletBalance = new BigNumber((await token.balanceOf(sender || user)).toString());
+
+  return {
+    scaledATokenBalance: new BigNumber(scaledATokenBalance),
+    currentATokenBalance: new BigNumber(userData.currentATokenBalance.toString()),
+    currentStableDebt: new BigNumber(userData.currentStableDebt.toString()),
+    currentVariableDebt: new BigNumber(userData.currentVariableDebt.toString()),
+    principalStableDebt: new BigNumber(userData.principalStableDebt.toString()),
+    scaledVariableDebt: new BigNumber(userData.scaledVariableDebt.toString()),
+    stableBorrowRate: new BigNumber(userData.stableBorrowRate.toString()),
+    liquidityRate: new BigNumber(userData.liquidityRate.toString()),
+    usageAsCollateralEnabled: userData.usageAsCollateralEnabled,
+    stableRateLastUpdated: new BigNumber(userData.stableRateLastUpdated.toString()),
+    walletBalance,
+  };
+};
+
+
 export const getReserveAddressFromSymbol = async (symbol: string) => {
 
   const token = await getMintableERC20(

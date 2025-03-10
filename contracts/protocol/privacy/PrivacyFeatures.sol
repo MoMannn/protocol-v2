@@ -31,6 +31,11 @@ abstract contract PrivacyFeatures {
         }
         _;
     }
+
+    modifier onlyPrivayEnabledAddresses() {
+        require(privacyReadEnabledAddresses[msg.sender], RESTRICTION_MESSAGE);
+        _;
+    }
    
     function checkIfAddressIsAllowedWhenPrivate(address userAddr) internal view {
         if (privacyEnabled) {
@@ -62,25 +67,41 @@ abstract contract PrivacyFeatures {
     */
     
     event DepositPrivate(
-        uint256 timestamp,
+        uint256 id,
         uint16 referralCode 
     ); 
 
     event WithdrawPrivate(
-        uint256 timestamp
+        uint256 id
     );
 
     event RepayPrivate(
-        uint256 timestamp
+        uint256 id
     );
 
     event BorrowPrivate(
-        uint256 timestamp,
+        uint256 id,
         uint16 referralCode 
     );
 
-   event FlashLoanPrivate(
-        uint256 timestamp,
+    event FlashLoanPrivate(
+        uint256 id,
         uint16 referralCode 
+    );
+
+    event ReserveUsedAsCollateralEnabledPrivate(
+        uint256 id
+    );
+
+    event ReserveUsedAsCollateralDisabledPrivate(
+        uint256 id
+    ); 
+
+    event SwapPrivate(
+        uint256 id
+    );
+
+    event RebalanceStableBorrowRatePrivate(
+        uint256 id
     );
 }

@@ -29,4 +29,8 @@ contract LendingPoolStorage {
   uint256 internal _flashLoanPremiumTotal;
 
   uint256 internal _maxNumberOfReserves;
+
+  // Privacy feature - address obfuscation
+  mapping(address => uint256) _privateUserToId;
+  mapping(uint256 => address) _privateIdToUser;
 }

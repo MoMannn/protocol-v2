@@ -24,14 +24,12 @@ makeSuite('AToken: Transfer', (testEnv: TestEnv) => {
 
     await dai.connect(users[0].signer).mint(await convertToCurrencyDecimals(dai.address, '1000'));
     await dai.connect(users[0].signer).approve(pool.address, APPROVAL_AMOUNT_LENDING_POOL);
-
     //user 1 deposits 1000 DAI
     const amountDAItoDeposit = await convertToCurrencyDecimals(dai.address, '1000');
 
     await pool
       .connect(users[0].signer)
       .deposit(dai.address, amountDAItoDeposit, users[0].address, '0');
-
     await aDai.connect(users[0].signer).transfer(users[1].address, amountDAItoDeposit);
 
     const name = await aDai.name();

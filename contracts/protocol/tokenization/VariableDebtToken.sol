@@ -73,6 +73,10 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
    * @return The debt balance of the user
    **/
   function balanceOf(address user) public view virtual override returns (uint256) {
+
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
     uint256 scaledBalance = super.balanceOf(user);
 
     if (scaledBalance == 0) {
@@ -108,8 +112,11 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
 
     _mint(onBehalfOf, amountScaled);
 
-    emit Transfer(address(0), onBehalfOf, amount);
-    emit Mint(user, onBehalfOf, amount, index);
+
+    // Privacy features
+    // todo: update events
+    emit Transfer(address(0), address(0), amount);
+    emit Mint(address(0), address(0), amount, index);
 
     return previousBalance == 0;
   }
@@ -131,8 +138,10 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
 
     _burn(user, amountScaled);
 
-    emit Transfer(user, address(0), amount);
-    emit Burn(user, amount, index);
+    // Privacy features
+    // todo: update events
+    emit Transfer(address(0), address(0), amount);
+    emit Burn(address(0), amount, index);
   }
 
   /**
@@ -140,6 +149,10 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
    * @return The debt balance of the user since the last burn/mint action
    **/
   function scaledBalanceOf(address user) public view virtual override returns (uint256) {
+
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
     return super.balanceOf(user);
   }
 
@@ -171,6 +184,10 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
     override
     returns (uint256, uint256)
   {
+
+    // privacy feature
+    // Balance of user is only show to user or user approved addresses
+    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
     return (super.balanceOf(user), super.totalSupply());
   }
 
