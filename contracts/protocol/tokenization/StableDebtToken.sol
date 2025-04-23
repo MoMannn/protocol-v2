@@ -87,6 +87,8 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
    * @return The last update timestamp
    **/
   function getUserLastUpdated(address user) external view virtual override returns (uint40) {
+    // privacy feature
+    require(canExposeToRead(user), RESTRICTION_MESSAGE);
     return _timestamps[user];
   }
 
@@ -96,6 +98,8 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
    * @return The stable rate of user
    **/
   function getUserStableRate(address user) external view virtual override returns (uint256) {
+    // privacy feature
+    require(canExposeToRead(user), RESTRICTION_MESSAGE);
     return _usersStableRate[user];
   }
 
