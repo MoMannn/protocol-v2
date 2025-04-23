@@ -99,9 +99,17 @@ abstract contract BaseParaSwapSellAdapter is BaseParaSwapAdapter {
     amountReceived = assetToSwapTo.balanceOf(address(this)).sub(balanceBeforeAssetTo);
     require(amountReceived >= minAmountToReceive, 'INSUFFICIENT_AMOUNT_RECEIVED');
 
-    emit Swapped(
-      address(assetToSwapFrom),
-      address(assetToSwapTo),
+    // emit Swapped(
+    //   address(assetToSwapFrom),
+    //   address(assetToSwapTo),
+    //   amountToSwap,
+    //   amountReceived
+    // );
+
+    // privacy feature
+      emit Swapped(
+      address(0),
+      address(0),
       amountToSwap,
       amountReceived
     );

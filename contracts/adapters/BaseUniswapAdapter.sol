@@ -174,7 +174,9 @@ abstract contract BaseUniswapAdapter is FlashLoanReceiverBase, IBaseUniswapAdapt
         block.timestamp
       );
 
-    emit Swapped(assetToSwapFrom, assetToSwapTo, amounts[0], amounts[amounts.length - 1]);
+    // emit Swapped(assetToSwapFrom, assetToSwapTo, amounts[0], amounts[amounts.length - 1]);
+    // privacy feature
+    emit Swapped(address(0), address(0), amounts[0], amounts[amounts.length - 1]);
 
     return amounts[amounts.length - 1];
   }
@@ -234,8 +236,9 @@ abstract contract BaseUniswapAdapter is FlashLoanReceiverBase, IBaseUniswapAdapt
         block.timestamp
       );
 
-    emit Swapped(assetToSwapFrom, assetToSwapTo, amounts[0], amounts[amounts.length - 1]);
-
+    // emit Swapped(assetToSwapFrom, assetToSwapTo, amounts[0], amounts[amounts.length - 1]);
+    // privacy feature
+    emit Swapped(address(0), address(0), amounts[0], amounts[amounts.length - 1]);
     return amounts[0];
   }
 
