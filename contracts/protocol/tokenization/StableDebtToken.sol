@@ -111,7 +111,7 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
 
     // privacy feature
     // Balance of user is only show to user or user approved addresses
-    require(canExposeToRead(account) || _allowances[account][msg.sender] > 0, RESTRICTION_MESSAGE);
+    require(canExposeToRead(account), RESTRICTION_MESSAGE);
     uint256 accountBalance = super.balanceOf(account);
     uint256 stableRate = _usersStableRate[account];
     if (accountBalance == 0) {
@@ -348,7 +348,7 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
 
     // privacy feature
     // Balance of user is only show to user or user approved addresses
-    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
+    require(canExposeToRead(user), RESTRICTION_MESSAGE);
     return super.balanceOf(user);
   }
 

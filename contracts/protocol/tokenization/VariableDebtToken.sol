@@ -76,7 +76,7 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
 
     // privacy feature
     // Balance of user is only show to user or user approved addresses
-    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
+    require(canExposeToRead(user), RESTRICTION_MESSAGE);
     uint256 scaledBalance = super.balanceOf(user);
 
     if (scaledBalance == 0) {
@@ -152,7 +152,7 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
 
     // privacy feature
     // Balance of user is only show to user or user approved addresses
-    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
+    require(canExposeToRead(user), RESTRICTION_MESSAGE);
     return super.balanceOf(user);
   }
 
@@ -187,7 +187,7 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
 
     // privacy feature
     // Balance of user is only show to user or user approved addresses
-    require(canExposeToRead(user) || _allowances[user][msg.sender] > 0, RESTRICTION_MESSAGE);
+    require(canExposeToRead(user), RESTRICTION_MESSAGE);
     return (super.balanceOf(user), super.totalSupply());
   }
 
