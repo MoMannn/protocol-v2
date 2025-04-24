@@ -231,10 +231,11 @@ contract LendingPoolCollateralManager is
       vars.actualDebtToLiquidate
     );
 
+    
     emit LiquidationCall(
       collateralAsset,
       debtAsset,
-      user,
+      address(0), // Privacy feature
       vars.actualDebtToLiquidate,
       vars.maxCollateralToLiquidate,
       msg.sender,

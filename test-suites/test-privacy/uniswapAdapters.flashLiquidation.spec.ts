@@ -56,7 +56,9 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
 
     //user 2 borrows
 
-    const userGlobalDataBefore = await pool.connect(borrower.signer).getUserAccountData(borrower.address);
+    const userGlobalDataBefore = await pool
+      .connect(borrower.signer)
+      .getUserAccountData(borrower.address);
     const daiPrice = await oracle.getAssetPrice(dai.address);
 
     const amountDAIToBorrow = await convertToCurrencyDecimals(
@@ -71,7 +73,9 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
       .connect(borrower.signer)
       .borrow(dai.address, amountDAIToBorrow, RateMode.Stable, '0', borrower.address);
 
-    const userGlobalDataAfter = await pool.connect(borrower.signer).getUserAccountData(borrower.address);
+    const userGlobalDataAfter = await pool
+      .connect(borrower.signer)
+      .getUserAccountData(borrower.address);
 
     expect(userGlobalDataAfter.currentLiquidationThreshold.toString()).to.be.equal(
       '8250',
@@ -123,7 +127,9 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
 
     //user 2 borrows
 
-    const userGlobalDataBefore = await pool.connect(borrower.signer).getUserAccountData(borrower.address);
+    const userGlobalDataBefore = await pool
+      .connect(borrower.signer)
+      .getUserAccountData(borrower.address);
     const daiPrice = await oracle.getAssetPrice(dai.address);
 
     const amountDAIToBorrow = await convertToCurrencyDecimals(
@@ -139,7 +145,9 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
         .borrow(dai.address, amountDAIToBorrow, RateMode.Stable, '0', borrower.address)
     );
 
-    const userGlobalDataBefore2 = await pool.connect(borrower.signer).getUserAccountData(borrower.address);
+    const userGlobalDataBefore2 = await pool
+      .connect(borrower.signer)
+      .getUserAccountData(borrower.address);
 
     const amountWETHToBorrow = new BigNumber(userGlobalDataBefore2.availableBorrowsETH.toString())
       .multipliedBy(0.8)
@@ -149,7 +157,9 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
       .connect(borrower.signer)
       .borrow(weth.address, amountWETHToBorrow, RateMode.Variable, '0', borrower.address);
 
-    const userGlobalDataAfter = await pool.connect(borrower.signer).getUserAccountData(borrower.address);
+    const userGlobalDataAfter = await pool
+      .connect(borrower.signer)
+      .getUserAccountData(borrower.address);
 
     expect(userGlobalDataAfter.currentLiquidationThreshold.toString()).to.be.equal(
       '8250',
@@ -213,15 +223,8 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
         await depositAndHFBelowOne();
         await increaseTime(100);
 
-        const {
-          dai,
-          weth,
-          users,
-          pool,
-          oracle,
-          helpersContract,
-          flashLiquidationAdapter,
-        } = testEnv;
+        const { dai, weth, users, pool, oracle, helpersContract, flashLiquidationAdapter } =
+          testEnv;
 
         const liquidator = users[3];
         const borrower = users[1];
@@ -434,17 +437,16 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
         await expect(Promise.resolve(tx)).to.not.emit(flashLiquidationAdapter, 'Swapped');
 
         // Expect LiquidationCall event
-        await expect(Promise.resolve(tx))
-          .to.emit(pool, 'LiquidationCall')
-          .withArgs(
-            weth.address,
-            weth.address,
-            borrower.address,
-            amountToLiquidate.toString(),
-            expectedCollateralLiquidated.toString(),
-            flashLiquidationAdapter.address,
-            false
-          );
+        await expect(Promise.resolve(tx)).to.emit(pool, 'LiquidationCall').withArgs(
+          weth.address,
+          weth.address,
+          '0x0000000000000000000000000000000000000000',
+          //borrower.address,
+          amountToLiquidate.toString(),
+          expectedCollateralLiquidated.toString(),
+          flashLiquidationAdapter.address,
+          false
+        );
 
         const borrowAssetContractBalance = await weth.balanceOf(flashLiquidationAdapter.address);
 
@@ -460,15 +462,8 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
         await depositAndHFBelowOne();
         await increaseTime(100);
 
-        const {
-          dai,
-          weth,
-          users,
-          pool,
-          oracle,
-          helpersContract,
-          flashLiquidationAdapter,
-        } = testEnv;
+        const { dai, weth, users, pool, oracle, helpersContract, flashLiquidationAdapter } =
+          testEnv;
 
         const liquidator = users[3];
         const borrower = users[1];
@@ -615,15 +610,8 @@ makeSuite('Uniswap adapters', (testEnv: TestEnv) => {
         await depositAndHFBelowOne();
         await increaseTime(100);
 
-        const {
-          dai,
-          weth,
-          users,
-          pool,
-          oracle,
-          helpersContract,
-          flashLiquidationAdapter,
-        } = testEnv;
+        const { dai, weth, users, pool, oracle, helpersContract, flashLiquidationAdapter } =
+          testEnv;
 
         const liquidator = users[3];
         const borrower = users[1];

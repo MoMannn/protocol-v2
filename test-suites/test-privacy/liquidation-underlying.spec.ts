@@ -65,9 +65,9 @@ makeSuite('LendingPool liquidation - liquidator receiving the underlying asset',
       .deposit(dai.address, amountDAItoDeposit, depositor.address, '0');
 
     const receipt = await tx.wait();
-    const depositPrivateEventSignature = pool.interface.getEvent("DepositPrivate");
-    console.log(receipt.events);
-    const depositPrivateEvents = receipt.events?.filter(event => event.event === depositPrivateEventSignature.name) || [];
+    const depositPrivateEventSignature = pool.interface.getEvent('DepositPrivate');
+    const depositPrivateEvents =
+      receipt.events?.filter((event) => event.event === depositPrivateEventSignature.name) || [];
     userId = depositPrivateEvents[0].args.id;
 
     //user 2 deposits 1 ETH
@@ -303,9 +303,7 @@ makeSuite('LendingPool liquidation - liquidator receiving the underlying asset',
     const usdcReserveDataBefore = await helpersContract.getReserveData(usdc.address);
     const ethReserveDataBefore = await helpersContract.getReserveData(weth.address);
 
-    const amountToLiquidate = new BigNumber(
-      userReserveDataBefore.currentStableDebt.toString()
-    )
+    const amountToLiquidate = new BigNumber(userReserveDataBefore.currentStableDebt.toString())
       .div(2)
       .toString();
 
@@ -313,10 +311,9 @@ makeSuite('LendingPool liquidation - liquidator receiving the underlying asset',
       .connect(liquidator.signer)
       .liquidationCallPrivate(weth.address, usdc.address, userId, amountToLiquidate, false);
 
-    const userReserveDataAfter = await helpersContract.connect(borrower.signer).getUserReserveData(
-      usdc.address,
-      borrower.address
-    );
+    const userReserveDataAfter = await helpersContract
+      .connect(borrower.signer)
+      .getUserReserveData(usdc.address, borrower.address);
 
     const userGlobalDataAfter = await pool.getUserAccountDataPrivate(userId);
 
